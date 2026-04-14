@@ -6,1038 +6,495 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="TablicePL">
-<title>TablicesPL — Skaner tablic</title>
+<title>TablicePL</title>
 <style>
-  :root {
-    --bg: #0a0a0a;
-    --surface: #141414;
-    --surface2: #1e1e1e;
-    --surface3: #282828;
-    --border: rgba(255,255,255,0.08);
-    --border2: rgba(255,255,255,0.15);
-    --text: #f0f0f0;
-    --text2: #999;
-    --text3: #666;
-    --accent: #f5c842;
-    --accent2: #e6b830;
-    --green: #4caf72;
-    --red: #e05555;
-    --blue: #4a9eff;
-    --purple: #a78bfa;
-    --orange: #f97316;
-    --font: 'SF Pro Display', -apple-system, 'Helvetica Neue', sans-serif;
-    --mono: 'SF Mono', 'Courier New', monospace;
-    --r: 12px;
-    --r2: 18px;
-    --safe-top: env(safe-area-inset-top, 0px);
-    --safe-bottom: env(safe-area-inset-bottom, 0px);
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--font); }
-
-  #app { display: flex; flex-direction: column; height: 100%; height: -webkit-fill-available; }
-
-  /* HEADER */
-  #header {
-    padding: calc(var(--safe-top) + 14px) 16px 10px;
-    background: var(--bg);
-    border-bottom: 0.5px solid var(--border);
-    display: flex; align-items: center; gap: 12px; flex-shrink: 0;
-    z-index: 100;
-  }
-  #header h1 { font-size: 17px; font-weight: 600; letter-spacing: -0.3px; flex: 1; }
-  #header h1 span { color: var(--accent); }
-  .hbtn {
-    width: 36px; height: 36px; border-radius: 50%; border: 0.5px solid var(--border2);
-    background: var(--surface2); display: flex; align-items: center; justify-content: center;
-    cursor: pointer; font-size: 15px; color: var(--text2); transition: background 0.15s;
-  }
-  .hbtn:active { background: var(--surface3); }
-
-  /* TABS */
-  #tabs {
-    display: flex; background: var(--bg); border-bottom: 0.5px solid var(--border);
-    flex-shrink: 0;
-  }
-  .tab {
-    flex: 1; padding: 10px 0; text-align: center; font-size: 12px; font-weight: 500;
-    color: var(--text3); cursor: pointer; transition: color 0.15s; position: relative;
-    letter-spacing: 0.3px; text-transform: uppercase;
-  }
-  .tab.active { color: var(--accent); }
-  .tab.active::after {
-    content: ''; position: absolute; bottom: 0; left: 20%; right: 20%; height: 2px;
-    background: var(--accent); border-radius: 2px 2px 0 0;
-  }
-
-  /* CONTENT */
-  #content { flex: 1; overflow: hidden; position: relative; }
-  .view { position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; display: none; }
-  .view.active { display: block; }
-
-  /* SCANNER VIEW */
-  #view-scan {
-    background: #000; display: flex; flex-direction: column;
-    overflow: hidden;
-  }
-  #view-scan.active { display: flex; }
-
-  #cam-wrapper {
-    flex: 1; position: relative; overflow: hidden; background: #000;
-  }
-  #video {
-    width: 100%; height: 100%; object-fit: cover; display: block;
-  }
-
-  #scan-overlay {
-    position: absolute; inset: 0; pointer-events: none;
-  }
-  #scan-frame {
-    position: absolute; left: 8%; right: 8%; top: 50%;
-    transform: translateY(-60%);
-    height: 80px; border: 2px solid var(--accent);
-    border-radius: 8px; box-shadow: 0 0 0 2000px rgba(0,0,0,0.55);
-  }
-  .corner { position: absolute; width: 14px; height: 14px; border-color: var(--accent); border-style: solid; }
-  .corner.tl { top: -1px; left: -1px; border-width: 2px 0 0 2px; border-radius: 4px 0 0 0; }
-  .corner.tr { top: -1px; right: -1px; border-width: 2px 2px 0 0; border-radius: 0 4px 0 0; }
-  .corner.bl { bottom: -1px; left: -1px; border-width: 0 0 2px 2px; border-radius: 0 0 0 4px; }
-  .corner.br { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; border-radius: 0 0 4px 0; }
-
-  #scan-hint {
-    position: absolute; left: 8%; right: 8%; top: 50%;
-    transform: translateY(calc(-60% + 90px));
-    text-align: center; font-size: 12px; color: rgba(255,255,255,0.65);
-    letter-spacing: 0.3px;
-  }
-  #scan-anim {
-    position: absolute; left: 8%; right: 8%; top: 50%;
-    transform: translateY(-60%);
-    height: 80px; pointer-events: none; overflow: hidden; border-radius: 8px;
-  }
-  #scan-line {
-    position: absolute; left: 0; right: 0; height: 2px;
-    background: linear-gradient(90deg, transparent, var(--accent), transparent);
-    animation: scanline 2s linear infinite;
-  }
-  @keyframes scanline { 0% { top: 0; } 100% { top: 80px; } }
-
-  #snap-bar {
-    padding: 16px 20px calc(var(--safe-bottom) + 16px);
-    background: linear-gradient(transparent, rgba(0,0,0,0.9));
-    position: absolute; bottom: 0; left: 0; right: 0;
-    display: flex; align-items: center; justify-content: space-between;
-    pointer-events: all;
-  }
-  #snap-btn {
-    width: 68px; height: 68px; border-radius: 50%;
-    background: var(--accent); border: 3px solid rgba(255,255,255,0.2);
-    display: flex; align-items: center; justify-content: center; cursor: pointer;
-    margin: 0 auto; transition: transform 0.1s; flex-shrink: 0;
-    box-shadow: 0 4px 20px rgba(245, 200, 66, 0.4);
-  }
-  #snap-btn:active { transform: scale(0.92); }
-  #snap-btn svg { width: 28px; height: 28px; fill: #000; }
-
-  #gallery-btn, #flip-btn {
-    width: 44px; height: 44px; border-radius: 50%;
-    background: rgba(255,255,255,0.12); border: 0.5px solid rgba(255,255,255,0.2);
-    display: flex; align-items: center; justify-content: center; cursor: pointer;
-    font-size: 18px; backdrop-filter: blur(8px);
-  }
-  #gallery-btn:active, #flip-btn:active { background: rgba(255,255,255,0.2); }
-
-  /* RESULT SHEET */
-  #result-sheet {
-    position: absolute; left: 0; right: 0; bottom: 0;
-    background: var(--surface); border-radius: 20px 20px 0 0;
-    border-top: 0.5px solid var(--border2);
-    padding: 12px 20px calc(var(--safe-bottom) + 20px);
-    transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
-    z-index: 50;
-    max-height: 75%;
-    overflow-y: auto;
-  }
-  #result-sheet.open { transform: translateY(0); }
-  .sheet-handle { width: 36px; height: 4px; background: var(--border2); border-radius: 2px; margin: 0 auto 16px; }
-
-  #detected-plate {
-    font-family: var(--mono); font-size: 32px; font-weight: 700; letter-spacing: 4px;
-    text-align: center; padding: 16px; background: var(--surface2); border-radius: var(--r);
-    margin-bottom: 12px; color: var(--text);
-    border: 1.5px solid var(--border2);
-  }
-  #detected-plate.new-plate { border-color: var(--green); color: var(--green); }
-  #detected-plate.dup-plate { border-color: var(--orange); color: var(--orange); }
-
-  .plate-meta { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
-  .badge {
-    padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
-    letter-spacing: 0.5px; text-transform: uppercase;
-  }
-  .badge.new { background: rgba(76,175,114,0.15); color: var(--green); border: 0.5px solid rgba(76,175,114,0.3); }
-  .badge.dup { background: rgba(249,115,22,0.15); color: var(--orange); border: 0.5px solid rgba(249,115,22,0.3); }
-  .badge.type { background: rgba(255,255,255,0.06); color: var(--text2); border: 0.5px solid var(--border); }
-  .badge.region { background: rgba(74,158,255,0.1); color: var(--blue); border: 0.5px solid rgba(74,158,255,0.25); }
-
-  .sheet-actions { display: flex; gap: 8px; }
-  .sact {
-    flex: 1; padding: 12px; border-radius: var(--r); border: 0.5px solid var(--border2);
-    background: var(--surface2); color: var(--text); font-size: 13px; font-weight: 500;
-    cursor: pointer; text-align: center; transition: background 0.15s;
-  }
-  .sact:active { background: var(--surface3); }
-  .sact.primary { background: var(--accent); color: #000; border-color: transparent; }
-  .sact.primary:active { background: var(--accent2); }
-
-  #edit-plate-input {
-    width: 100%; padding: 12px 16px; font-family: var(--mono); font-size: 22px;
-    font-weight: 700; letter-spacing: 3px; text-align: center; text-transform: uppercase;
-    background: var(--surface3); color: var(--text); border: 1px solid var(--border2);
-    border-radius: var(--r); margin-bottom: 12px; outline: none;
-    display: none;
-  }
-
-  /* CANVAS for capture */
-  #canvas { display: none; }
-
-  /* STATUS BAR in scan view */
-  #scan-status {
-    position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
-    background: rgba(0,0,0,0.7); color: var(--text2); font-size: 11px;
-    padding: 5px 12px; border-radius: 20px; backdrop-filter: blur(8px);
-    pointer-events: none; white-space: nowrap;
-    border: 0.5px solid rgba(255,255,255,0.1);
-  }
-  #scan-status.active { color: var(--accent); border-color: rgba(245,200,66,0.3); }
-  #scan-status.scanning { color: var(--blue); border-color: rgba(74,158,255,0.3); }
-
-  /* COLLECTIONS VIEW */
-  #view-collection { padding: 12px; }
-  .coll-header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 4px 4px 12px; gap: 8px;
-  }
-  .coll-header h2 { font-size: 16px; font-weight: 600; }
-  .coll-count { color: var(--text3); font-size: 13px; }
-
-  #search-bar {
-    width: 100%; padding: 10px 14px; background: var(--surface2); color: var(--text);
-    border: 0.5px solid var(--border2); border-radius: var(--r); font-size: 14px;
-    outline: none; margin-bottom: 12px;
-  }
-  #search-bar::placeholder { color: var(--text3); }
-
-  .filter-row { display: flex; gap: 6px; margin-bottom: 12px; overflow-x: auto; padding-bottom: 2px; }
-  .filter-row::-webkit-scrollbar { display: none; }
-  .filter-chip {
-    padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 500;
-    white-space: nowrap; cursor: pointer; border: 0.5px solid var(--border2);
-    background: var(--surface2); color: var(--text2); transition: all 0.15s;
-  }
-  .filter-chip.active { background: var(--accent); color: #000; border-color: transparent; }
-
-  #plates-list { display: flex; flex-direction: column; gap: 8px; }
-
-  .plate-item {
-    background: var(--surface2); border-radius: var(--r2); border: 0.5px solid var(--border);
-    padding: 12px 16px; display: flex; align-items: center; gap: 12px;
-    transition: background 0.15s; cursor: pointer; position: relative;
-    overflow: hidden;
-  }
-  .plate-item:active { background: var(--surface3); }
-  .plate-item.highlight { animation: flashNew 0.6s ease; }
-  @keyframes flashNew { 0% { background: rgba(76,175,114,0.2); } 100% { background: var(--surface2); } }
-
-  .plate-stripe {
-    width: 4px; height: 100%; position: absolute; left: 0; top: 0; bottom: 0;
-    border-radius: var(--r2) 0 0 var(--r2);
-  }
-  .stripe-standard { background: var(--text3); }
-  .stripe-zabytkowe { background: var(--accent); }
-  .stripe-rzadowe { background: var(--blue); }
-  .stripe-historyczne { background: var(--purple); }
-  .stripe-tymczasowe { background: var(--red); }
-
-  .plate-num {
-    font-family: var(--mono); font-size: 18px; font-weight: 700; letter-spacing: 2px;
-    flex: 1;
-  }
-  .plate-info { text-align: right; }
-  .plate-region-label { font-size: 11px; color: var(--blue); font-weight: 500; }
-  .plate-date { font-size: 11px; color: var(--text3); margin-top: 2px; }
-  .plate-count-badge {
-    min-width: 22px; height: 22px; border-radius: 11px; padding: 0 6px;
-    background: var(--surface3); color: var(--text2); font-size: 11px; font-weight: 700;
-    display: flex; align-items: center; justify-content: center;
-    border: 0.5px solid var(--border2);
-  }
-  .plate-count-badge.multi { background: rgba(249,115,22,0.15); color: var(--orange); border-color: rgba(249,115,22,0.3); }
-
-  .empty-state {
-    text-align: center; padding: 60px 20px; color: var(--text3); font-size: 14px;
-  }
-  .empty-state .es-icon { font-size: 48px; margin-bottom: 12px; display: block; }
-
-  /* STATS VIEW */
-  #view-stats { padding: 12px; }
-
-  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
-  .stat-card {
-    background: var(--surface2); border-radius: var(--r2); padding: 16px;
-    border: 0.5px solid var(--border);
-  }
-  .stat-val { font-size: 32px; font-weight: 700; color: var(--text); letter-spacing: -1px; }
-  .stat-lbl { font-size: 11px; color: var(--text3); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
-
-  .section-title {
-    font-size: 13px; font-weight: 600; color: var(--text3); text-transform: uppercase;
-    letter-spacing: 0.8px; margin: 0 4px 10px; display: flex; align-items: center; gap: 8px;
-  }
-  .section-title::after { content: ''; flex: 1; height: 0.5px; background: var(--border2); }
-
-  .bar-row {
-    display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
-  }
-  .bar-lbl { font-family: var(--mono); font-size: 13px; font-weight: 700; min-width: 48px; color: var(--text); }
-  .bar-track { flex: 1; height: 6px; background: var(--surface3); border-radius: 3px; overflow: hidden; }
-  .bar-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.6s cubic-bezier(0.34,1.56,0.64,1); }
-  .bar-cnt { font-size: 12px; color: var(--text2); min-width: 28px; text-align: right; }
-
-  .type-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 16px; }
-  .type-card {
-    background: var(--surface2); border-radius: var(--r); padding: 12px 14px;
-    border: 0.5px solid var(--border);
-    display: flex; align-items: center; gap: 10px;
-  }
-  .type-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-  .type-name { font-size: 12px; color: var(--text2); flex: 1; }
-  .type-num { font-size: 16px; font-weight: 700; }
-
-  /* LOADING spinner */
-  #loading-overlay {
-    position: absolute; inset: 0; background: rgba(0,0,0,0.7);
-    display: none; align-items: center; justify-content: center;
-    flex-direction: column; gap: 12px; z-index: 200;
-    backdrop-filter: blur(4px);
-  }
-  #loading-overlay.show { display: flex; }
-  .spinner {
-    width: 36px; height: 36px; border: 2px solid var(--border2);
-    border-top-color: var(--accent); border-radius: 50%;
-    animation: spin 0.7s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .loading-txt { font-size: 13px; color: var(--text2); }
-
-  /* TOAST */
-  #toast {
-    position: fixed; bottom: calc(var(--safe-bottom) + 100px); left: 50%; transform: translateX(-50%) translateY(10px);
-    background: var(--surface3); color: var(--text); padding: 10px 18px;
-    border-radius: 20px; font-size: 13px; opacity: 0; transition: all 0.25s;
-    white-space: nowrap; border: 0.5px solid var(--border2); z-index: 999;
-    pointer-events: none;
-  }
-  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-
-  /* DETAIL MODAL */
-  #detail-modal {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 500;
-    display: none; align-items: flex-end; justify-content: center;
-    backdrop-filter: blur(8px);
-  }
-  #detail-modal.open { display: flex; }
-  #detail-inner {
-    background: var(--surface); border-radius: 20px 20px 0 0;
-    padding: 12px 20px calc(var(--safe-bottom) + 24px);
-    width: 100%; max-height: 80vh; overflow-y: auto;
-  }
-  .detail-plate {
-    font-family: var(--mono); font-size: 36px; font-weight: 800; letter-spacing: 5px;
-    text-align: center; padding: 20px; background: var(--surface2); border-radius: var(--r);
-    margin-bottom: 16px; border: 1.5px solid var(--border2);
-  }
-  .detail-row {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 10px 0; border-bottom: 0.5px solid var(--border);
-    font-size: 14px;
-  }
-  .detail-row:last-of-type { border-bottom: none; }
-  .detail-key { color: var(--text3); }
-  .detail-val { color: var(--text); font-weight: 500; }
-  .del-btn {
-    width: 100%; padding: 14px; border-radius: var(--r); background: rgba(224,85,85,0.1);
-    color: var(--red); border: 0.5px solid rgba(224,85,85,0.3); font-size: 14px; font-weight: 600;
-    cursor: pointer; margin-top: 16px; transition: background 0.15s;
-  }
-  .del-btn:active { background: rgba(224,85,85,0.2); }
-  .close-modal-btn {
-    width: 100%; padding: 14px; border-radius: var(--r); background: var(--surface2);
-    color: var(--text2); border: 0.5px solid var(--border2); font-size: 14px;
-    cursor: pointer; margin-top: 8px;
-  }
+:root{
+  --bg:#0a0a0a;--sf:#141414;--sf2:#1e1e1e;--sf3:#282828;
+  --bd:rgba(255,255,255,0.08);--bd2:rgba(255,255,255,0.16);
+  --tx:#f0f0f0;--tx2:#999;--tx3:#555;
+  --ac:#f5c842;--ac2:#e6b830;
+  --gr:#4caf72;--re:#e05555;--bl:#4a9eff;--or:#f97316;--pu:#a78bfa;
+  --fn:'SF Pro Display',-apple-system,'Helvetica Neue',sans-serif;
+  --mo:'SF Mono','Courier New',monospace;
+  --r:12px;--r2:18px;
+  --st:env(safe-area-inset-top,0px);--sb:env(safe-area-inset-bottom,0px)
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--tx);font-family:var(--fn)}
+#app{display:flex;flex-direction:column;height:100%;height:-webkit-fill-available}
+#hdr{padding:calc(var(--st) + 12px) 16px 10px;background:var(--bg);border-bottom:0.5px solid var(--bd);display:flex;align-items:center;gap:10px;flex-shrink:0;z-index:100}
+#hdr h1{font-size:17px;font-weight:600;letter-spacing:-.3px;flex:1}
+#hdr h1 span{color:var(--ac)}
+.hb{width:34px;height:34px;border-radius:50%;border:0.5px solid var(--bd2);background:var(--sf2);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--tx2);flex-shrink:0}
+.hb:active{background:var(--sf3)}
+.hb svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#tabs{display:flex;background:var(--bg);border-bottom:0.5px solid var(--bd);flex-shrink:0}
+.tab{flex:1;padding:10px 0;text-align:center;font-size:11px;font-weight:600;color:var(--tx3);cursor:pointer;position:relative;letter-spacing:.4px;text-transform:uppercase}
+.tab.active{color:var(--ac)}
+.tab.active::after{content:'';position:absolute;bottom:0;left:20%;right:20%;height:2px;background:var(--ac);border-radius:2px 2px 0 0}
+#content{flex:1;overflow:hidden;position:relative}
+.view{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;display:none}
+.view.active{display:block}
+#view-scan{background:#000;overflow:hidden}
+#view-scan.active{display:flex;flex-direction:column}
+#cam-wrap{flex:1;position:relative;overflow:hidden;background:#000;min-height:0}
+#vid{width:100%;height:100%;object-fit:cover;display:block}
+#cap-canvas{display:none}
+#ov-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+#zoom-col{position:absolute;right:12px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;gap:6px;z-index:20}
+#zoom-lbl{font-size:11px;color:rgba(255,255,255,.8);font-weight:600}
+input[type=range]#zoom-sl{-webkit-appearance:slider-vertical;appearance:slider-vertical;width:26px;height:120px;accent-color:var(--ac);cursor:pointer;writing-mode:vertical-lr;direction:rtl}
+#status-pill{position:absolute;top:14px;left:50%;transform:translateX(-50%);padding:5px 14px;border-radius:20px;font-size:11px;font-weight:500;white-space:nowrap;backdrop-filter:blur(8px);pointer-events:none;z-index:20;border:0.5px solid rgba(255,255,255,.1);background:rgba(0,0,0,.65);color:rgba(255,255,255,.55);display:none}
+#status-pill.on{display:block;color:var(--ac);border-color:rgba(245,200,66,.35)}
+#status-pill.scan{display:block;color:var(--bl);border-color:rgba(74,158,255,.35)}
+#status-pill.found{display:block;color:var(--gr);border-color:rgba(76,175,114,.35)}
+#status-pill.err{display:block;color:var(--tx2);border-color:var(--bd2)}
+#auto-ind{position:absolute;top:14px;right:60px;width:8px;height:8px;border-radius:50%;background:var(--gr);z-index:20;display:none}
+#auto-ind.show{display:block}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+#auto-ind.scanning{animation:blink .9s ease infinite}
+#snap-bar{padding:12px 22px calc(var(--sb) + 12px);background:linear-gradient(transparent,rgba(0,0,0,.92));display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+#snap-btn{width:68px;height:68px;border-radius:50%;background:var(--ac);border:3px solid rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform .1s;box-shadow:0 4px 22px rgba(245,200,66,.4)}
+#snap-btn:active{transform:scale(.9)}
+#snap-btn svg{width:26px;height:26px;fill:#000;stroke:none}
+.cb{width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.12);border:0.5px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.cb:active{background:rgba(255,255,255,.22)}
+.cb svg{width:18px;height:18px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#auto-btn{width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.12);border:0.5px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;font-weight:700;color:rgba(255,255,255,.7);letter-spacing:.2px}
+#auto-btn.aa{background:rgba(76,175,114,.2);border-color:rgba(76,175,114,.4);color:var(--gr)}
+#loading{position:absolute;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px;z-index:200;backdrop-filter:blur(5px)}
+#loading.show{display:flex}
+.spin{width:36px;height:36px;border:2px solid var(--bd2);border-top-color:var(--ac);border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+#ocr-init{position:absolute;inset:0;background:rgba(0,0,0,.9);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;z-index:300;backdrop-filter:blur(6px)}
+#ocr-init.done{display:none}
+#ocr-progress{width:200px;height:4px;background:var(--sf3);border-radius:2px;overflow:hidden}
+#ocr-bar{height:100%;background:var(--ac);width:0%;transition:width .3s;border-radius:2px}
+#sheet{position:absolute;left:0;right:0;bottom:0;background:var(--sf);border-radius:22px 22px 0 0;border-top:0.5px solid var(--bd2);padding:10px 20px calc(var(--sb) + 18px);transform:translateY(100%);transition:transform .35s cubic-bezier(.34,1.4,.64,1);z-index:50;max-height:75%;overflow-y:auto}
+#sheet.open{transform:translateY(0)}
+.sh-handle{width:36px;height:4px;background:var(--bd2);border-radius:2px;margin:0 auto 14px}
+#det-plate{font-family:var(--mo);font-size:30px;font-weight:800;letter-spacing:4px;text-align:center;padding:15px;background:var(--sf2);border-radius:var(--r);margin-bottom:11px;border:1.5px solid var(--bd2)}
+#det-plate.np{border-color:var(--gr);color:var(--gr)}
+#det-plate.dp{border-color:var(--or);color:var(--or)}
+#det-meta{display:flex;gap:7px;margin-bottom:11px;flex-wrap:wrap}
+.badge{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:.3px;text-transform:uppercase}
+.b-new{background:rgba(76,175,114,.15);color:var(--gr);border:0.5px solid rgba(76,175,114,.3)}
+.b-dup{background:rgba(249,115,22,.15);color:var(--or);border:0.5px solid rgba(249,115,22,.3)}
+.b-typ{background:rgba(255,255,255,.06);color:var(--tx2);border:0.5px solid var(--bd)}
+.b-reg{background:rgba(74,158,255,.1);color:var(--bl);border:0.5px solid rgba(74,158,255,.25)}
+#det-actions{display:flex;gap:8px}
+.sa{flex:1;padding:12px;border-radius:var(--r);border:0.5px solid var(--bd2);background:var(--sf2);color:var(--tx);font-size:13px;font-weight:500;cursor:pointer;text-align:center}
+.sa:active{background:var(--sf3)}
+.sa.pri{background:var(--ac);color:#000;border-color:transparent}
+.sa.pri:active{background:var(--ac2)}
+#edit-inp{width:100%;padding:11px 14px;font-family:var(--mo);font-size:22px;font-weight:700;letter-spacing:3px;text-align:center;text-transform:uppercase;background:var(--sf3);color:var(--tx);border:1px solid var(--bd2);border-radius:var(--r);margin-bottom:11px;outline:none;display:none}
+#view-collection{padding:12px}
+.cl-hdr{display:flex;align-items:center;justify-content:space-between;padding:4px 4px 12px}
+.cl-hdr h2{font-size:16px;font-weight:600}
+#cl-cnt{color:var(--tx3);font-size:13px}
+#srch{width:100%;padding:10px 14px;background:var(--sf2);color:var(--tx);border:0.5px solid var(--bd2);border-radius:var(--r);font-size:14px;outline:none;margin-bottom:12px}
+#srch::placeholder{color:var(--tx3)}
+.frow{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;padding-bottom:2px}
+.frow::-webkit-scrollbar{display:none}
+.fc{padding:5px 12px;border-radius:20px;font-size:12px;font-weight:500;white-space:nowrap;cursor:pointer;border:0.5px solid var(--bd2);background:var(--sf2);color:var(--tx2)}
+.fc.active{background:var(--ac);color:#000;border-color:transparent}
+#pl-list{display:flex;flex-direction:column;gap:8px}
+.pi{background:var(--sf2);border-radius:var(--r2);border:0.5px solid var(--bd);padding:12px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;position:relative;overflow:hidden}
+.pi:active{background:var(--sf3)}
+.ps{width:4px;position:absolute;left:0;top:0;bottom:0;border-radius:var(--r2) 0 0 var(--r2)}
+.ps-standard{background:var(--tx3)}.ps-zabytkowe{background:var(--ac)}.ps-rzadowe{background:var(--bl)}.ps-historyczne{background:var(--pu)}.ps-tymczasowe{background:var(--re)}
+.pn{font-family:var(--mo);font-size:18px;font-weight:700;letter-spacing:2px;flex:1}
+.pr2{font-size:11px;color:var(--bl);font-weight:500}
+.pd{font-size:11px;color:var(--tx3);margin-top:2px}
+.pc{min-width:22px;height:22px;border-radius:11px;padding:0 6px;background:var(--sf3);color:var(--tx2);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;border:0.5px solid var(--bd2)}
+.pc.multi{background:rgba(249,115,22,.15);color:var(--or);border-color:rgba(249,115,22,.3)}
+.empty{text-align:center;padding:60px 20px;color:var(--tx3);font-size:14px}
+.empty span{font-size:48px;display:block;margin-bottom:12px}
+#view-stats{padding:12px}
+.sg{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.sc{background:var(--sf2);border-radius:var(--r2);padding:16px;border:0.5px solid var(--bd)}
+.sv{font-size:32px;font-weight:700;letter-spacing:-1px}
+.sl2{font-size:11px;color:var(--tx3);margin-top:4px;text-transform:uppercase;letter-spacing:.5px}
+.sec{font-size:12px;font-weight:600;color:var(--tx3);text-transform:uppercase;letter-spacing:.8px;margin:0 4px 10px;display:flex;align-items:center;gap:8px}
+.sec::after{content:'';flex:1;height:0.5px;background:var(--bd2)}
+.br2{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.bl2{font-family:var(--mo);font-size:13px;font-weight:700;min-width:48px;color:var(--tx)}
+.bt{flex:1;height:6px;background:var(--sf3);border-radius:3px;overflow:hidden}
+.bf{height:100%;background:var(--ac);border-radius:3px;transition:width .6s cubic-bezier(.34,1.4,.64,1)}
+.bc{font-size:12px;color:var(--tx2);min-width:28px;text-align:right}
+.tg{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:16px}
+.tc{background:var(--sf2);border-radius:var(--r);padding:12px 14px;border:0.5px solid var(--bd);display:flex;align-items:center;gap:10px}
+.td2{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.tn{font-size:12px;color:var(--tx2);flex:1}
+.tv{font-size:16px;font-weight:700}
+#dm{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:500;display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(10px)}
+#dm.open{display:flex}
+#dm-in{background:var(--sf);border-radius:22px 22px 0 0;padding:10px 20px calc(var(--sb) + 22px);width:100%;max-height:80vh;overflow-y:auto}
+.dm-plate{font-family:var(--mo);font-size:34px;font-weight:800;letter-spacing:5px;text-align:center;padding:18px;background:var(--sf2);border-radius:var(--r);margin-bottom:16px;border:1.5px solid var(--bd2)}
+.dr{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:0.5px solid var(--bd);font-size:14px}
+.dr:last-of-type{border-bottom:none}
+.dk{color:var(--tx3)}.dv{color:var(--tx);font-weight:500}
+.del-b{width:100%;padding:14px;border-radius:var(--r);background:rgba(224,85,85,.1);color:var(--re);border:0.5px solid rgba(224,85,85,.3);font-size:14px;font-weight:600;cursor:pointer;margin-top:16px}
+.cls-b{width:100%;padding:14px;border-radius:var(--r);background:var(--sf2);color:var(--tx2);border:0.5px solid var(--bd2);font-size:14px;cursor:pointer;margin-top:8px}
+#toast{position:fixed;bottom:calc(var(--sb) + 108px);left:50%;transform:translateX(-50%) translateY(8px);background:var(--sf3);color:var(--tx);padding:10px 18px;border-radius:20px;font-size:13px;opacity:0;transition:all .25s;white-space:nowrap;border:0.5px solid var(--bd2);z-index:999;pointer-events:none}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 </style>
 </head>
 <body>
-
 <div id="app">
-  <div id="header">
-    <div class="hbtn" onclick="toggleCamera()" id="cam-toggle-btn" title="Włącz/wyłącz kamerę">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
-      </svg>
-    </div>
+  <div id="hdr">
+    <div class="hb" onclick="toggleCam()"><svg viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div>
     <h1>Tablice <span>PL</span></h1>
-    <div class="hbtn" onclick="exportData()" title="Eksportuj dane">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
-      </svg>
-    </div>
+    <div class="hb" onclick="exportCSV()"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></div>
   </div>
-
   <div id="tabs">
-    <div class="tab active" data-view="scan" onclick="switchTab('scan')">📷 Skaner</div>
-    <div class="tab" data-view="collection" onclick="switchTab('collection')">🗂 Kolekcja</div>
-    <div class="tab" data-view="stats" onclick="switchTab('stats')">📊 Statystyki</div>
+    <div class="tab active" data-view="scan" onclick="goTab('scan')">📷 Skaner</div>
+    <div class="tab" data-view="collection" onclick="goTab('collection')">🗂 Kolekcja</div>
+    <div class="tab" data-view="stats" onclick="goTab('stats')">📊 Statystyki</div>
   </div>
-
   <div id="content">
-
-    <!-- SCAN VIEW -->
     <div class="view active" id="view-scan">
-      <div id="cam-wrapper">
-        <video id="video" autoplay playsinline muted></video>
-        <canvas id="canvas"></canvas>
-        <div id="scan-overlay">
-          <div id="scan-frame">
-            <div class="corner tl"></div><div class="corner tr"></div>
-            <div class="corner bl"></div><div class="corner br"></div>
-          </div>
-          <div id="scan-anim"><div id="scan-line"></div></div>
-          <div id="scan-hint">Ustaw tablicę w ramce</div>
+      <div id="cam-wrap">
+        <video id="vid" autoplay playsinline muted></video>
+        <canvas id="cap-canvas"></canvas>
+        <canvas id="ov-canvas"></canvas>
+        <div id="zoom-col">
+          <div id="zoom-lbl">1×</div>
+          <input type="range" id="zoom-sl" min="1" max="5" step="0.1" value="1" oninput="doZoom(this.value)">
         </div>
-        <div id="scan-status">Kamera wyłączona</div>
-        <div id="loading-overlay">
-          <div class="spinner"></div>
-          <div class="loading-txt" id="loading-txt">Rozpoznaję tablicę…</div>
+        <div id="status-pill"></div>
+        <div id="auto-ind"></div>
+        <div id="loading"><div class="spin"></div><div style="font-size:13px;color:#999" id="ld-txt">Rozpoznaję…</div></div>
+        <div id="ocr-init">
+          <div class="spin"></div>
+          <div style="font-size:14px;color:#999" id="ocr-msg">Ładuję silnik OCR…</div>
+          <div id="ocr-progress"><div id="ocr-bar"></div></div>
+          <div style="font-size:11px;color:#444;text-align:center;max-width:240px;line-height:1.6;padding:0 20px">Pierwsze uruchomienie pobiera ~10 MB modelu OCR. Następne starty są natychmiastowe.</div>
         </div>
-        <div id="snap-bar">
-          <div id="flip-btn" onclick="flipCamera()">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M1 4v6h6M23 20v-6h-6"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 013.51 15"/>
-            </svg>
-          </div>
-          <div id="snap-btn" onclick="captureFrame()">
-            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg>
-          </div>
-          <div id="gallery-btn" onclick="openGallery()">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
-              <path d="M21 15l-5-5L5 21"/>
-            </svg>
-          </div>
+        <div id="sheet">
+          <div class="sh-handle"></div>
+          <div id="det-plate">— — — — —</div>
+          <input id="edit-inp" type="text" placeholder="Wpisz tablicę ręcznie" maxlength="10">
+          <div id="det-meta"></div>
+          <div id="det-actions"></div>
         </div>
       </div>
-
-      <!-- Result sheet -->
-      <div id="result-sheet">
-        <div class="sheet-handle"></div>
-        <div id="detected-plate">— — — — —</div>
-        <input id="edit-plate-input" type="text" placeholder="Wpisz tablicę ręcznie" maxlength="10">
-        <div class="plate-meta" id="plate-meta"></div>
-        <div class="sheet-actions" id="sheet-actions"></div>
+      <div id="snap-bar">
+        <div class="cb" onclick="flipCam()"><svg viewBox="0 0 24 24"><path d="M1 4v6h6M23 20v-6h-6"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 013.51 15"/></svg></div>
+        <div id="snap-btn" onclick="snapNow()"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg></div>
+        <div id="auto-btn" onclick="toggleAuto()">AUTO</div>
       </div>
     </div>
-
-    <!-- COLLECTION VIEW -->
     <div class="view" id="view-collection">
-      <div class="coll-header">
-        <h2>Kolekcja</h2>
-        <span class="coll-count" id="coll-count">0 tablic</span>
+      <div class="cl-hdr"><h2>Kolekcja</h2><span id="cl-cnt">0 tablic</span></div>
+      <input id="srch" type="text" placeholder="🔍  Szukaj tablicy lub regionu…" oninput="renderColl()">
+      <div class="frow">
+        <div class="fc active" data-f="all" onclick="setF('all')">Wszystkie</div>
+        <div class="fc" data-f="standard" onclick="setF('standard')">Standardowe</div>
+        <div class="fc" data-f="zabytkowe" onclick="setF('zabytkowe')">🟡 Zabytkowe</div>
+        <div class="fc" data-f="rzadowe" onclick="setF('rzadowe')">🔵 Rządowe</div>
+        <div class="fc" data-f="historyczne" onclick="setF('historyczne')">⚫ Historyczne</div>
+        <div class="fc" data-f="tymczasowe" onclick="setF('tymczasowe')">🔴 Tymczasowe</div>
       </div>
-      <input id="search-bar" type="text" placeholder="🔍  Szukaj tablicy lub regionu…" oninput="filterPlates()">
-      <div class="filter-row" id="filter-row">
-        <div class="filter-chip active" data-filter="all" onclick="setFilter('all')">Wszystkie</div>
-        <div class="filter-chip" data-filter="standard" onclick="setFilter('standard')">Standardowe</div>
-        <div class="filter-chip" data-filter="zabytkowe" onclick="setFilter('zabytkowe')">🟡 Zabytkowe</div>
-        <div class="filter-chip" data-filter="rzadowe" onclick="setFilter('rzadowe')">🔵 Rządowe</div>
-        <div class="filter-chip" data-filter="historyczne" onclick="setFilter('historyczne')">⚫ Historyczne</div>
-        <div class="filter-chip" data-filter="tymczasowe" onclick="setFilter('tymczasowe')">🔴 Tymczasowe</div>
-      </div>
-      <div id="plates-list"></div>
+      <div id="pl-list"></div>
     </div>
-
-    <!-- STATS VIEW -->
     <div class="view" id="view-stats">
-      <div class="stats-grid" id="stats-grid">
-        <div class="stat-card"><div class="stat-val" id="s-total">0</div><div class="stat-lbl">Unikalnych tablic</div></div>
-        <div class="stat-card"><div class="stat-val" id="s-scans">0</div><div class="stat-lbl">Łącznie skanów</div></div>
-        <div class="stat-card"><div class="stat-val" id="s-regions">0</div><div class="stat-lbl">Regionów</div></div>
-        <div class="stat-card"><div class="stat-val" id="s-today">0</div><div class="stat-lbl">Dziś dodanych</div></div>
+      <div class="sg">
+        <div class="sc"><div class="sv" id="s1">0</div><div class="sl2">Unikalnych</div></div>
+        <div class="sc"><div class="sv" id="s2">0</div><div class="sl2">Łącznie skanów</div></div>
+        <div class="sc"><div class="sv" id="s3">0</div><div class="sl2">Regionów</div></div>
+        <div class="sc"><div class="sv" id="s4">0</div><div class="sl2">Dziś dodanych</div></div>
       </div>
-
-      <div class="section-title">Najpopularniejsze prefiksy (2 litery)</div>
-      <div id="prefix2-bars" style="margin-bottom: 16px;"></div>
-
-      <div class="section-title">Najpopularniejsze prefiksy (3 litery)</div>
-      <div id="prefix3-bars" style="margin-bottom: 16px;"></div>
-
-      <div class="section-title">Typy tablic</div>
-      <div class="type-grid" id="type-grid"></div>
+      <div class="sec">Najpopularniejsze prefiksy (2 litery)</div>
+      <div id="b2" style="margin-bottom:16px"></div>
+      <div class="sec">Najpopularniejsze prefiksy (3 litery)</div>
+      <div id="b3" style="margin-bottom:16px"></div>
+      <div class="sec">Typy tablic</div>
+      <div class="tg" id="tg"></div>
     </div>
-
   </div>
 </div>
-
-<!-- Detail Modal -->
-<div id="detail-modal" onclick="closeDetailIfBg(event)">
-  <div id="detail-inner">
-    <div class="sheet-handle" style="margin-bottom:12px;"></div>
-    <div class="detail-plate" id="dm-plate"></div>
+<div id="dm" onclick="if(event.target===this)closeDM()">
+  <div id="dm-in">
+    <div class="sh-handle" style="margin-bottom:12px"></div>
+    <div class="dm-plate" id="dm-p"></div>
     <div id="dm-rows"></div>
-    <button class="del-btn" onclick="deleteCurrentPlate()">🗑 Usuń z kolekcji</button>
-    <button class="close-modal-btn" onclick="closeDetail()">Zamknij</button>
+    <button class="del-b" onclick="delPlate()">🗑 Usuń z kolekcji</button>
+    <button class="cls-b" onclick="closeDM()">Zamknij</button>
   </div>
 </div>
-
 <div id="toast"></div>
-<input type="file" id="file-input" accept="image/*" style="display:none" onchange="handleFileInput(event)">
-
+<input type="file" id="fi" accept="image/*" style="display:none" onchange="fromFile(event)">
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script>
-const STORAGE_KEY = 'tablice_pl_v3';
-const API_KEY_KEY = 'tablice_api_key';
-let db = loadDB();
-let stream = null;
-let facingMode = 'environment';
-let currentView = 'scan';
-let currentFilter = 'all';
-let detailId = null;
-let pendingPlate = null;
-let cameraActive = false;
+const KEY='tpl_v4';
+let db=load();
+function load(){try{return JSON.parse(localStorage.getItem(KEY))||{plates:{},scans:0}}catch{return{plates:{},scans:0}}}
+function save(){localStorage.setItem(KEY,JSON.stringify(db))}
 
-function loadDB() {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || { plates: {}, totalScans: 0 };
-  } catch(e) { return { plates: {}, totalScans: 0 }; }
-}
-function saveDB() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
-}
-
-// PLATE TYPE DETECTION
-const PLATE_TYPES = {
-  standard: { label: 'Standardowa', color: '#888' },
-  zabytkowe: { label: 'Zabytkowa', color: '#f5c842' },
-  rzadowe: { label: 'Rządowa/wojskowa', color: '#4a9eff' },
-  historyczne: { label: 'Historyczna (przed 1995)', color: '#a78bfa' },
-  tymczasowe: { label: 'Tymczasowa/dealerska', color: '#e05555' }
+const TYPES={
+  standard:{l:'Standardowa',c:'#888'},
+  zabytkowe:{l:'Zabytkowa',c:'#f5c842'},
+  rzadowe:{l:'Rządowa/wojskowa',c:'#4a9eff'},
+  historyczne:{l:'Historyczna (pre-1995)',c:'#a78bfa'},
+  tymczasowe:{l:'Tymczasowa/dealerska',c:'#e05555'}
 };
 
-function detectPlateType(plateStr, bgColor) {
-  if (bgColor === 'yellow') return 'zabytkowe';
-  if (bgColor === 'blue') return 'rzadowe';
-  if (bgColor === 'black') return 'historyczne';
-  if (bgColor === 'red_text') return 'tymczasowe';
-  return 'standard';
-}
+const REG={'W':'Warszawa','WA':'Warszawa','WI':'Warszawa','WN':'Warszawa','WO':'Warszawa','WB':'Warszawa','WD':'Warszawa','WE':'Wejherowo','WH':'Warszawa','WJ':'Wrocław ok.','WK':'Warszawa','WL':'Wrocław ok.','WM':'Warszawa','WP':'Warszawa','WR':'Wrocław','WS':'Warszawa','WT':'Warszawa','WU':'Warszawa','WW':'Warszawa','WX':'Warszawa','WY':'Warszawa','WZ':'Warszawa','KR':'Kraków','KK':'Kraków','KN':'Kraków ok.','KA':'Katowice','KI':'Kielce','KS':'Krosno','KO':'Konin','GD':'Gdańsk','GK':'Gdańsk ok.','GS':'Gdańsk ok.','GL':'Gliwice','GN':'Gniezno','PO':'Poznań','PZ':'Poznań ok.','PI':'Piła','PR':'Przemyśl','LU':'Lublin','LB':'Lublin ok.','LD':'Łódź','LZ':'Łódź ok.','LI':'Limanowa','SL':'Śląsk','SB':'Bielsko-Biała','SC':'Częstochowa','SO':'Sosnowiec','SZ':'Szczecin','ZS':'Szczecin ok.','ZG':'Zielona Góra','ZEI':'Zielona Góra (hist.)','BY':'Bydgoszcz','BI':'Białystok','RZ':'Rzeszów','OL':'Olsztyn','OP':'Opole','TK':'Toruń','TO':'Toruń','RA':'Radom','NS':'Nowy Sącz','TA':'Tarnów','CH':'Chorzów','SD':'Świdnica','ERA':'Łódź (hist.)','C':'Toruń','D':'Wrocław','B':'Białystok','G':'Gdańsk','K':'Kraków','L':'Lublin','N':'Olsztyn','O':'Opole','P':'Poznań','R':'Rzeszów','S':'Katowice','T':'Kielce','Z':'Szczecin','E':'Łódź','F':'Zielona Góra'};
 
-// REGION DATABASE (prefix → region name)
-const REGIONS = {
-  'W':'Warszawa','WA':'Warszawa','WI':'Warszawa','WN':'Warszawa',
-  'KR':'Kraków','KK':'Kraków','KN':'Kraków','GD':'Gdańsk','GK':'Gdańsk',
-  'PO':'Poznań','PZ':'Poznań','WR':'Wrocław','WJ':'Wrocław',
-  'LU':'Lublin','LB':'Lublin','KA':'Katowice','SL':'Śląsk','SB':'Bielsko-Biała',
-  'LD':'Łódź','LZ':'Łódź','SZ':'Szczecin','ZS':'Szczecin',
-  'BY':'Bydgoszcz','BI':'Białystok','RZ':'Rzeszów','KI':'Kielce',
-  'OL':'Olsztyn','OP':'Opole','TK':'Toruń','ZG':'Zielona Góra',
-  'GN':'Gniezno','KO':'Konin','PI':'Piła','TO':'Toruń',
-  'WL':'Włocławek','RA':'Radom','SK':'Skarżysko','KE':'Kędzierzyn',
-  'NY':'Nysa','BR':'Brodnica','LI':'Limanowa','NS':'Nowy Sącz',
-  'PR':'Przemyśl','KS':'Krosno','ZA':'Zamość','HR':'Hrubieszów',
-  'SD':'Świdnica','TA':'Tarnów','BC':'Bochnia','MY':'Myślenice',
-  'WE':'Wejherowo','GS':'Gdańsk okolice','SO':'Sosnowiec','CH':'Chorzów',
-  'ZEI':'Zielona Góra historyczna','ERA':'Łódź historyczna',
-  'C':'Toruń specjalna','D':'Wrocław specjalna'
-};
+function getRegion(p){const c=p.replace(/[\s\-.]/g,'').toUpperCase();for(let l=4;l>=1;l--){const x=c.slice(0,l);if(REG[x])return{pfx:x,r:REG[x]}}return{pfx:c.slice(0,2),r:'Nieznany region'}}
 
-function getRegion(plateNum) {
-  const clean = plateNum.replace(/[\s\-\.]/g, '').toUpperCase();
-  for (let len = 4; len >= 1; len--) {
-    const prefix = clean.substring(0, len);
-    if (REGIONS[prefix]) return { prefix, region: REGIONS[prefix] };
-  }
-  return { prefix: clean.substring(0, 2), region: 'Nieznany region' };
-}
+let worker=null,ocrReady=false;
 
-// CAMERA
-async function startCamera() {
-  if (cameraActive) return;
-  const statusEl = document.getElementById('scan-status');
-  statusEl.textContent = 'Uruchamiam kamerę…';
-  statusEl.className = 'active';
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } }
-    });
-    const video = document.getElementById('video');
-    video.srcObject = stream;
-    await video.play();
-    cameraActive = true;
-    statusEl.textContent = 'Gotowy do skanowania';
-    statusEl.className = 'active';
-    setTimeout(() => { statusEl.textContent = ''; statusEl.className = ''; }, 2000);
-  } catch(e) {
-    statusEl.textContent = 'Brak dostępu do kamery';
-    statusEl.className = '';
-    showToast('Brak dostępu do kamery. Użyj galerii.');
-  }
-}
-
-function stopCamera() {
-  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
-  const video = document.getElementById('video');
-  video.srcObject = null;
-  cameraActive = false;
-  document.getElementById('scan-status').textContent = 'Kamera wyłączona';
-  document.getElementById('scan-status').className = '';
-}
-
-function toggleCamera() {
-  if (cameraActive) stopCamera();
-  else startCamera();
-}
-
-async function flipCamera() {
-  facingMode = facingMode === 'environment' ? 'user' : 'environment';
-  if (cameraActive) { stopCamera(); await startCamera(); }
-}
-
-// CAPTURE
-function captureFrame() {
-  const video = document.getElementById('video');
-  const canvas = document.getElementById('canvas');
-  if (!cameraActive || video.videoWidth === 0) {
-    showToast('Najpierw włącz kamerę');
-    return;
-  }
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  canvas.getContext('2d').drawImage(video, 0, 0);
-
-  // Crop to frame area
-  const frameRect = document.getElementById('scan-frame').getBoundingClientRect();
-  const wrapRect = document.getElementById('cam-wrapper').getBoundingClientRect();
-  const scaleX = video.videoWidth / wrapRect.width;
-  const scaleY = video.videoHeight / wrapRect.height;
-  const padding = 20;
-  const cx = (frameRect.left - wrapRect.left - padding) * scaleX;
-  const cy = (frameRect.top - wrapRect.top - padding) * scaleY;
-  const cw = (frameRect.width + padding * 2) * scaleX;
-  const ch = (frameRect.height + padding * 2) * scaleY;
-
-  const cropCanvas = document.createElement('canvas');
-  cropCanvas.width = Math.max(1, cw);
-  cropCanvas.height = Math.max(1, ch);
-  cropCanvas.getContext('2d').drawImage(canvas, cx, cy, cw, ch, 0, 0, cropCanvas.width, cropCanvas.height);
-
-  const imageData = cropCanvas.toDataURL('image/jpeg', 0.85).split(',')[1];
-  analyzeWithClaude(imageData);
-}
-
-function openGallery() {
-  document.getElementById('file-input').click();
-}
-
-function handleFileInput(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    const imageData = ev.target.result.split(',')[1];
-    analyzeWithClaude(imageData);
-  };
-  reader.readAsDataURL(file);
-  e.target.value = '';
-}
-
-// AI ANALYSIS
-async function analyzeWithClaude(imageData) {
-  showLoading('Rozpoznaję tablicę…');
-
-  const prompt = `Analizujesz zdjęcie polskiej tablicy rejestracyjnej.
-
-Zwróć TYLKO JSON (bez żadnego innego tekstu) w formacie:
-{
-  "plate": "NUMER_TABLICY",
-  "type": "standard|zabytkowe|rzadowe|historyczne|tymczasowe",
-  "confidence": 0.0-1.0,
-  "notes": "krótka uwaga lub null"
-}
-
-Typy tablic:
-- standard: biała tablica, czarne litery (najczęstsza)
-- zabytkowe: ŻÓŁTE tło, czarne litery (dla aut zabytkowych)
-- rzadowe: NIEBIESKIE tło, białe litery (rządowe/wojskowe)
-- historyczne: CZARNE tło, białe litery (wycofane w 1995, ale nadal spotykane)
-- tymczasowe: białe tło, CZERWONE litery (dealerskie/tymczasowe)
-
-Format tablicy: 2-3 litery (kod powiatu) + spacja + 4-5 znaków (cyfry/litery)
-Przykłady: WA 6642E, ERA 75TM, GD 35H, C 009, WI 99021, ZEI 8449, D3 3313
-
-Jeśli tablica nieczytelna, zwróć plate: null.`;
-
-  try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 200,
-        messages: [{
-          role: 'user',
-          content: [{
-            type: 'image',
-            source: { type: 'base64', media_type: 'image/jpeg', data: imageData }
-          }, {
-            type: 'text', text: prompt
-          }]
-        }]
-      })
-    });
-
-    const data = await response.json();
-    hideLoading();
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        showManualEntry('Brak autoryzacji API. Wpisz tablicę ręcznie:');
-      } else {
-        showManualEntry('Błąd API. Wpisz tablicę ręcznie:');
+async function initOCR(){
+  try{
+    worker=await Tesseract.createWorker('eng',1,{
+      logger:m=>{
+        if(m.status==='loading language traineddata'){
+          document.getElementById('ocr-msg').textContent='Pobieranie modelu (~10 MB)…';
+          document.getElementById('ocr-bar').style.width=Math.round(20+m.progress*65)+'%';
+        }else if(m.status.includes('loading')||m.status.includes('initializing')){
+          document.getElementById('ocr-bar').style.width='15%';
+        }
       }
-      return;
+    });
+    await worker.setParameters({
+      tessedit_char_whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ',
+      tessedit_pageseg_mode:'11',
+      preserve_interword_spaces:'0'
+    });
+    document.getElementById('ocr-bar').style.width='100%';
+    document.getElementById('ocr-msg').textContent='Gotowy!';
+    await new Promise(r=>setTimeout(r,400));
+    document.getElementById('ocr-init').classList.add('done');
+    ocrReady=true;
+    pill('Gotowy','on');setTimeout(()=>pill('',''),2000);
+  }catch(e){
+    document.getElementById('ocr-msg').textContent='Błąd OCR: '+e.message;
+  }
+}
+
+let stream=null,facing='environment',camOn=false,curZoom=1;
+let autoMode=false,autoTimer=null,busy=false;
+let curView='scan',curFilter='all',pendingPlate=null,dmId=null;
+
+async function startCam(){
+  if(camOn)return;
+  pill('Uruchamiam…','on');
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:facing,width:{ideal:1920},height:{ideal:1080}}});
+    const v=document.getElementById('vid');
+    v.srcObject=stream;await v.play();camOn=true;
+    const track=stream.getVideoTracks()[0];
+    const caps=track.getCapabilities?.()||{};
+    if(caps.zoom){
+      const sl=document.getElementById('zoom-sl');
+      sl.min=caps.zoom.min;sl.max=caps.zoom.max;
+      sl.step=(caps.zoom.max-caps.zoom.min)/50;
+      sl.value=caps.zoom.min;curZoom=caps.zoom.min;
     }
-
-    const text = data.content?.find(b => b.type === 'text')?.text || '';
-    let result;
-    try {
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      result = JSON.parse(jsonMatch ? jsonMatch[0] : text);
-    } catch(e) {
-      showManualEntry('Nie rozpoznano tablicy. Wpisz ręcznie:');
-      return;
-    }
-
-    if (!result.plate) {
-      showManualEntry('Tablica nieczytelna. Wpisz ręcznie:');
-      return;
-    }
-
-    const plateStr = result.plate.toUpperCase().trim();
-    showResult(plateStr, result.type || 'standard');
-
-  } catch(e) {
-    hideLoading();
-    showManualEntry('Błąd połączenia. Wpisz tablicę ręcznie:');
+    pill('Gotowy','on');setTimeout(()=>pill('',''),1800);
+    resizeOV();
+  }catch(e){
+    pill('Brak dostępu do kamery','err');
+    toast('Zezwól na dostęp do kamery w Safari → Ustawienia');
   }
 }
+function stopCam(){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}document.getElementById('vid').srcObject=null;camOn=false;stopAuto();pill('Kamera wyłączona','err')}
+function toggleCam(){if(camOn)stopCam();else startCam()}
+async function flipCam(){facing=facing==='environment'?'user':'environment';if(camOn){stopCam();await startCam()}}
 
-function showLoading(txt) {
-  document.getElementById('loading-txt').textContent = txt;
-  document.getElementById('loading-overlay').classList.add('show');
-  document.getElementById('result-sheet').classList.remove('open');
-}
-function hideLoading() {
-  document.getElementById('loading-overlay').classList.remove('show');
-}
-
-function showResult(plateStr, type) {
-  pendingPlate = { plate: plateStr, type };
-  const exists = db.plates[plateStr];
-  const detEl = document.getElementById('detected-plate');
-  detEl.textContent = plateStr;
-  detEl.className = exists ? 'dup-plate' : 'new-plate';
-
-  const meta = document.getElementById('plate-meta');
-  const { region } = getRegion(plateStr);
-  const typeInfo = PLATE_TYPES[type] || PLATE_TYPES.standard;
-
-  meta.innerHTML = `
-    <span class="badge ${exists ? 'dup' : 'new'}">${exists ? `Widziana ${exists.count}×` : 'Nowa!'}</span>
-    <span class="badge type">${typeInfo.label}</span>
-    <span class="badge region">${region}</span>
-  `;
-
-  const actions = document.getElementById('sheet-actions');
-  actions.innerHTML = `
-    <div class="sact" onclick="editManually()">✏️ Popraw</div>
-    <div class="sact primary" onclick="savePendingPlate()">💾 Zapisz</div>
-  `;
-
-  document.getElementById('edit-plate-input').style.display = 'none';
-  document.getElementById('result-sheet').classList.add('open');
+async function doZoom(v){
+  curZoom=parseFloat(v);
+  document.getElementById('zoom-lbl').textContent=curZoom.toFixed(1)+'×';
+  if(!stream)return;
+  const track=stream.getVideoTracks()[0];
+  const caps=track.getCapabilities?.()||{};
+  if(caps.zoom){try{await track.applyConstraints({advanced:[{zoom:curZoom}]})}catch(e){}}
+  else{document.getElementById('vid').style.transform='scale('+curZoom+')';document.getElementById('ov-canvas').style.transform='scale('+curZoom+')'}
 }
 
-function showManualEntry(hint) {
-  const detEl = document.getElementById('detected-plate');
-  detEl.textContent = '— — — —';
-  detEl.className = '';
+function resizeOV(){const w=document.getElementById('cam-wrap'),ov=document.getElementById('ov-canvas');ov.width=w.clientWidth;ov.height=w.clientHeight}
+window.addEventListener('resize',resizeOV);
 
-  document.getElementById('plate-meta').innerHTML = `<span style="font-size:12px;color:var(--text3);">${hint}</span>`;
-
-  const input = document.getElementById('edit-plate-input');
-  input.style.display = 'block';
-  input.value = '';
-  input.focus();
-
-  const actions = document.getElementById('sheet-actions');
-  actions.innerHTML = `
-    <div class="sact" onclick="closeSheet()">Anuluj</div>
-    <div class="sact primary" onclick="saveManualEntry()">💾 Zapisz</div>
-  `;
-
-  document.getElementById('result-sheet').classList.add('open');
-}
-
-function editManually() {
-  const input = document.getElementById('edit-plate-input');
-  input.value = pendingPlate?.plate || '';
-  input.style.display = 'block';
-  input.focus();
-  const actions = document.getElementById('sheet-actions');
-  actions.innerHTML = `
-    <div class="sact" onclick="closeSheet()">Anuluj</div>
-    <div class="sact primary" onclick="saveManualEntry()">💾 Zapisz</div>
-  `;
-}
-
-function saveManualEntry() {
-  const val = document.getElementById('edit-plate-input').value.trim().toUpperCase();
-  if (!val || val.length < 3) { showToast('Wpisz prawidłowy numer tablicy'); return; }
-  const type = pendingPlate?.type || 'standard';
-  addPlate(val, type);
-}
-
-function savePendingPlate() {
-  if (!pendingPlate) return;
-  addPlate(pendingPlate.plate, pendingPlate.type);
-}
-
-function addPlate(plateStr, type) {
-  const now = new Date();
-  const dateStr = now.toLocaleDateString('pl-PL');
-  const timeStr = now.toLocaleTimeString('pl-PL', { hour:'2-digit', minute:'2-digit' });
-  const isNew = !db.plates[plateStr];
-
-  if (!db.plates[plateStr]) {
-    db.plates[plateStr] = { plate: plateStr, type, count: 0, firstSeen: `${dateStr} ${timeStr}`, lastSeen: '', dates: [] };
-  }
-  db.plates[plateStr].count++;
-  db.plates[plateStr].lastSeen = `${dateStr} ${timeStr}`;
-  db.plates[plateStr].dates.push(now.toISOString());
-  db.plates[plateStr].type = type;
-  db.totalScans = (db.totalScans || 0) + 1;
-  saveDB();
-
-  closeSheet();
-  showToast(isNew ? `✅ Nowa tablica: ${plateStr}` : `🔄 Widziana ponownie: ${plateStr} (${db.plates[plateStr].count}×)`);
-
-  if (currentView === 'collection') renderCollection();
-  if (currentView === 'stats') renderStats();
-  pendingPlate = null;
-}
-
-function closeSheet() {
-  document.getElementById('result-sheet').classList.remove('open');
-}
-
-// VIEWS
-function switchTab(view) {
-  currentView = view;
-  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.view === view));
-  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === `view-${view}`));
-
-  if (view === 'scan') {
-    if (!cameraActive) startCamera();
-  } else {
-    if (view === 'collection') renderCollection();
-    if (view === 'stats') renderStats();
-  }
-}
-
-// COLLECTION
-function renderCollection() {
-  const searchVal = document.getElementById('search-bar').value.toLowerCase();
-  const allPlates = Object.values(db.plates);
-
-  let filtered = allPlates.filter(p => {
-    const matchFilter = currentFilter === 'all' || p.type === currentFilter;
-    const matchSearch = !searchVal || p.plate.toLowerCase().includes(searchVal) || getRegion(p.plate).region.toLowerCase().includes(searchVal);
-    return matchFilter && matchSearch;
-  }).sort((a,b) => new Date(b.dates[b.dates.length-1]) - new Date(a.dates[a.dates.length-1]));
-
-  document.getElementById('coll-count').textContent = `${filtered.length} tablic`;
-
-  const list = document.getElementById('plates-list');
-  if (filtered.length === 0) {
-    list.innerHTML = `<div class="empty-state"><span class="es-icon">🔍</span>${searchVal || currentFilter !== 'all' ? 'Brak wyników dla wybranych filtrów' : 'Brak zapisanych tablic.<br>Zacznij skanować!'}</div>`;
-    return;
-  }
-
-  list.innerHTML = filtered.map(p => {
-    const { region } = getRegion(p.plate);
-    const typeInfo = PLATE_TYPES[p.type] || PLATE_TYPES.standard;
-    return `<div class="plate-item" onclick="showDetail('${p.plate}')">
-      <div class="plate-stripe stripe-${p.type}"></div>
-      <div style="margin-left:6px;">
-        <div class="plate-num">${p.plate}</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:2px;">${typeInfo.label}</div>
-      </div>
-      <div style="flex:1"></div>
-      <div class="plate-info">
-        <div class="plate-region-label">${region}</div>
-        <div class="plate-date">${p.lastSeen}</div>
-      </div>
-      <div class="plate-count-badge ${p.count > 1 ? 'multi' : ''}">${p.count}</div>
-    </div>`;
-  }).join('');
-}
-
-function filterPlates() { renderCollection(); }
-function setFilter(f) {
-  currentFilter = f;
-  document.querySelectorAll('.filter-chip').forEach(c => c.classList.toggle('active', c.dataset.filter === f));
-  renderCollection();
-}
-
-// STATS
-function renderStats() {
-  const plates = Object.values(db.plates);
-  const total = plates.length;
-  const scans = db.totalScans || plates.reduce((a,p) => a + p.count, 0);
-  const regions = new Set(plates.map(p => getRegion(p.plate).region)).size;
-  const todayStr = new Date().toLocaleDateString('pl-PL');
-  const today = plates.filter(p => p.firstSeen.startsWith(todayStr)).length;
-
-  document.getElementById('s-total').textContent = total;
-  document.getElementById('s-scans').textContent = scans;
-  document.getElementById('s-regions').textContent = regions;
-  document.getElementById('s-today').textContent = today;
-
-  // Prefix stats
-  const prefix2 = {}, prefix3 = {};
-  plates.forEach(p => {
-    const clean = p.plate.replace(/[\s\-\.]/g, '');
-    const p2 = clean.substring(0,2);
-    const p3 = clean.substring(0,3);
-    if (/^[A-Z]{2}$/.test(p2)) prefix2[p2] = (prefix2[p2] || 0) + p.count;
-    if (/^[A-Z]{3}$/.test(p3)) prefix3[p3] = (prefix3[p3] || 0) + p.count;
+function drawBoxes(words){
+  const ov=document.getElementById('ov-canvas'),ctx=ov.getContext('2d');
+  ctx.clearRect(0,0,ov.width,ov.height);
+  const vid=document.getElementById('vid');
+  if(!vid.videoWidth)return;
+  const sx=ov.width/vid.videoWidth,sy=ov.height/vid.videoHeight;
+  words.forEach(w=>{
+    const {x0,y0,x1,y1}=w.bbox;
+    const cx=x0*sx,cy=y0*sy,cw=(x1-x0)*sx,ch=(y1-y0)*sy;
+    ctx.strokeStyle='#f5c842';ctx.lineWidth=2.5;ctx.shadowColor='rgba(245,200,66,.7)';ctx.shadowBlur=8;
+    rr(ctx,cx-4,cy-4,cw+8,ch+8,6);ctx.stroke();ctx.shadowBlur=0;
+    if(w.text){ctx.fillStyle='rgba(0,0,0,.75)';ctx.fillRect(cx-4,cy-22,w.text.length*9+12,18);ctx.fillStyle='#f5c842';ctx.font='bold 12px SF Mono,Courier New,monospace';ctx.fillText(w.text,cx+2,cy-8)}
   });
+}
+function clearBoxes(){const ov=document.getElementById('ov-canvas');ov.getContext('2d').clearRect(0,0,ov.width,ov.height)}
+function rr(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath()}
 
-  renderBars('prefix2-bars', prefix2, 10);
-  renderBars('prefix3-bars', prefix3, 8);
-
-  // Type stats
-  const types = {};
-  plates.forEach(p => { types[p.type] = (types[p.type] || 0) + 1; });
-  const tg = document.getElementById('type-grid');
-  tg.innerHTML = Object.entries(PLATE_TYPES).map(([k,v]) => `
-    <div class="type-card">
-      <div class="type-dot" style="background:${v.color}"></div>
-      <div class="type-name">${v.label}</div>
-      <div class="type-num" style="color:${v.color}">${types[k] || 0}</div>
-    </div>
-  `).join('');
+function grabFrame(){
+  const vid=document.getElementById('vid');
+  if(!camOn||!vid.videoWidth)return null;
+  const c=document.getElementById('cap-canvas');
+  c.width=vid.videoWidth;c.height=vid.videoHeight;
+  c.getContext('2d').drawImage(vid,0,0);return c;
 }
 
-function renderBars(containerId, data, topN) {
-  const sorted = Object.entries(data).sort((a,b) => b[1]-a[1]).slice(0, topN);
-  const max = sorted[0]?.[1] || 1;
-  const el = document.getElementById(containerId);
-  if (sorted.length === 0) { el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 4px;">Brak danych</div>'; return; }
-  el.innerHTML = sorted.map(([prefix, cnt]) => `
-    <div class="bar-row">
-      <div class="bar-lbl">${prefix}</div>
-      <div class="bar-track"><div class="bar-fill" style="width:${Math.round(cnt/max*100)}%"></div></div>
-      <div class="bar-cnt">${cnt}</div>
-    </div>
-  `).join('');
+async function snapNow(){
+  if(busy){toast('Poczekaj…');return}
+  if(!camOn){toast('Włącz kamerę');return}
+  if(!ocrReady){toast('OCR się jeszcze ładuje…');return}
+  const f=grabFrame();if(f)await processFrame(f,true);
 }
 
-// DETAIL MODAL
-function showDetail(plateStr) {
-  const p = db.plates[plateStr];
-  if (!p) return;
-  detailId = plateStr;
-  const { region } = getRegion(plateStr);
-  const typeInfo = PLATE_TYPES[p.type] || PLATE_TYPES.standard;
-
-  document.getElementById('dm-plate').textContent = plateStr;
-  document.getElementById('dm-plate').style.color = typeInfo.color;
-  document.getElementById('dm-rows').innerHTML = `
-    <div class="detail-row"><span class="detail-key">Typ tablicy</span><span class="detail-val" style="color:${typeInfo.color}">${typeInfo.label}</span></div>
-    <div class="detail-row"><span class="detail-key">Region</span><span class="detail-val">${region}</span></div>
-    <div class="detail-row"><span class="detail-key">Pierwsza obserwacja</span><span class="detail-val">${p.firstSeen}</span></div>
-    <div class="detail-row"><span class="detail-key">Ostatnia obserwacja</span><span class="detail-val">${p.lastSeen}</span></div>
-    <div class="detail-row"><span class="detail-key">Liczba obserwacji</span><span class="detail-val">${p.count}×</span></div>
-  `;
-  document.getElementById('detail-modal').classList.add('open');
+async function processFrame(canvas,show){
+  busy=true;
+  if(show)showLoading('Rozpoznaję tablicę…');else pill('Skanowanie…','scan');
+  try{
+    const data=await worker.recognize(canvas);
+    const allWords=(data.data.words||[]);
+    const found=[],plateWords=[];
+    allWords.forEach((w,i)=>{
+      const t=w.text.toUpperCase().replace(/[^A-Z0-9]/g,'');
+      if(isPlate(t)){plateWords.push({text:t,bbox:w.bbox});if(!found.includes(t))found.push(t)}
+      if(i+1<allWords.length){
+        const t2=allWords[i+1].text.toUpperCase().replace(/[^A-Z0-9]/g,'');
+        const combined=t+t2;
+        if(isPlate(combined)&&!found.includes(combined)){
+          const b={x0:Math.min(w.bbox.x0,allWords[i+1].bbox.x0),y0:Math.min(w.bbox.y0,allWords[i+1].bbox.y0),x1:Math.max(w.bbox.x1,allWords[i+1].bbox.x1),y1:Math.max(w.bbox.y1,allWords[i+1].bbox.y1)};
+          plateWords.push({text:combined,bbox:b});found.push(combined);
+        }
+      }
+    });
+    hideLoading();pill('','');
+    if(!found.length){if(show)showManual('Nie wykryto tablicy. Przybliż lub wpisz ręcznie:');busy=false;return}
+    if(plateWords.length)drawBoxes(plateWords);
+    setTimeout(clearBoxes,8000);
+    found.sort((a,b)=>(getRegion(b).r!=='Nieznany region'?1:0)-(getRegion(a).r!=='Nieznany region'?1:0)||b.length-a.length);
+    const best=found[0];
+    if(show||!db.plates[best])showResultSheet(best,found.length);
+  }catch(e){hideLoading();pill('','');if(show)showManual('Błąd OCR. Wpisz ręcznie:')}
+  busy=false;
 }
 
-function closeDetail() { document.getElementById('detail-modal').classList.remove('open'); detailId = null; }
-function closeDetailIfBg(e) { if (e.target === document.getElementById('detail-modal')) closeDetail(); }
-
-function deleteCurrentPlate() {
-  if (!detailId) return;
-  if (!confirm(`Usunąć tablicę ${detailId} z kolekcji?`)) return;
-  delete db.plates[detailId];
-  saveDB();
-  closeDetail();
-  renderCollection();
-  showToast('Usunięto z kolekcji');
+function isPlate(s){
+  if(!s||s.length<4||s.length>9)return false;
+  if(!/^[A-Z]/.test(s))return false;
+  if(!/[0-9]/.test(s))return false;
+  const letters=(s.match(/[A-Z]/g)||[]).length;
+  if(letters<2||letters>5)return false;
+  return getRegion(s).r!=='Nieznany region';
 }
 
-// EXPORT
-function exportData() {
-  const plates = Object.values(db.plates).sort((a,b) => b.count - a.count);
-  let csv = 'Tablica,Typ,Region,Obserwacji,Pierwsza obserwacja,Ostatnia obserwacja\n';
-  plates.forEach(p => {
-    const { region } = getRegion(p.plate);
-    const typeInfo = PLATE_TYPES[p.type] || PLATE_TYPES.standard;
-    csv += `${p.plate},${typeInfo.label},${region},${p.count},${p.firstSeen},${p.lastSeen}\n`;
-  });
+function toggleAuto(){if(autoMode)stopAuto();else startAuto()}
+function startAuto(){
+  if(!camOn){toast('Włącz kamerę');return}
+  if(!ocrReady){toast('OCR się ładuje…');return}
+  autoMode=true;
+  document.getElementById('auto-btn').classList.add('aa');
+  document.getElementById('auto-ind').className='show scanning';
+  toast('Tryb AUTO — skanowanie co 2.5s');
+  autoTimer=setInterval(async()=>{if(!busy&&camOn){const f=grabFrame();if(f)await processFrame(f,false)}},2500);
+}
+function stopAuto(){autoMode=false;clearInterval(autoTimer);autoTimer=null;document.getElementById('auto-btn').classList.remove('aa');document.getElementById('auto-ind').className='';pill('','')}
 
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = `tablice_${new Date().toISOString().slice(0,10)}.csv`;
-  a.click();
-  showToast('Eksport CSV gotowy');
+function showLoading(t){document.getElementById('ld-txt').textContent=t;document.getElementById('loading').classList.add('show')}
+function hideLoading(){document.getElementById('loading').classList.remove('show')}
+function pill(t,cls){const el=document.getElementById('status-pill');el.textContent=t;el.className=cls;el.style.display=t?'block':'none'}
+
+function showResultSheet(plateStr,total){
+  pendingPlate={plate:plateStr};
+  const exists=db.plates[plateStr];
+  const el=document.getElementById('det-plate');el.textContent=plateStr;el.className=exists?'dp':'np';
+  const{r}=getRegion(plateStr);
+  const extra=total>1?'<span class="badge b-typ">+' + (total-1) + ' innych</span>':'';
+  document.getElementById('det-meta').innerHTML='<span class="badge ' + (exists?'b-dup':'b-new') + '">' + (exists?'Widziana '+exists.count+'x':'Nowa!') + '</span><span class="badge b-typ">Standardowa</span><span class="badge b-reg">' + r + '</span>' + extra;
+  document.getElementById('det-actions').innerHTML='<div class="sa" onclick="editMan()">✏️ Popraw</div><div class="sa pri" onclick="savePending()">💾 Zapisz</div>';
+  document.getElementById('edit-inp').style.display='none';
+  document.getElementById('sheet').classList.add('open');
+  pill('Wykryto: '+plateStr,'found');
 }
 
-// TOAST
-let toastTimer;
-function showToast(msg) {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+function showManual(hint){
+  document.getElementById('det-plate').textContent='— — — —';document.getElementById('det-plate').className='';
+  document.getElementById('det-meta').innerHTML='<span style="font-size:12px;color:var(--tx3)">'+hint+'</span>';
+  const inp=document.getElementById('edit-inp');inp.style.display='block';inp.value='';
+  document.getElementById('det-actions').innerHTML='<div class="sa" onclick="closeSheet()">Anuluj</div><div class="sa pri" onclick="saveMan()">💾 Zapisz</div>';
+  document.getElementById('sheet').classList.add('open');
+  setTimeout(()=>inp.focus(),350);
+}
+function editMan(){const inp=document.getElementById('edit-inp');inp.value=pendingPlate?.plate||'';inp.style.display='block';document.getElementById('det-actions').innerHTML='<div class="sa" onclick="closeSheet()">Anuluj</div><div class="sa pri" onclick="saveMan()">💾 Zapisz</div>';setTimeout(()=>inp.focus(),100)}
+function saveMan(){const v=document.getElementById('edit-inp').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');if(!v||v.length<3){toast('Wpisz prawidłowy numer');return}addPlate(v,'standard')}
+function savePending(){if(pendingPlate)addPlate(pendingPlate.plate,'standard')}
+
+function addPlate(plateStr,type){
+  const now=new Date(),d=now.toLocaleDateString('pl-PL'),t=now.toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});
+  const isNew=!db.plates[plateStr];
+  if(!db.plates[plateStr])db.plates[plateStr]={plate:plateStr,type,count:0,firstSeen:d+' '+t,lastSeen:'',dates:[]};
+  db.plates[plateStr].count++;db.plates[plateStr].lastSeen=d+' '+t;
+  db.plates[plateStr].dates.push(now.toISOString());db.scans=(db.scans||0)+1;save();
+  closeSheet();pendingPlate=null;
+  toast(isNew?'✅ Nowa: '+plateStr:'🔄 Ponownie: '+plateStr+' ('+db.plates[plateStr].count+'x)');
+  if(curView==='collection')renderColl();if(curView==='stats')renderStats();
+}
+function closeSheet(){document.getElementById('sheet').classList.remove('open');pill('','')}
+function fromFile(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=async ev=>{if(!ocrReady){toast('OCR się ładuje…');return}const img=new Image();img.onload=async()=>{const c=document.getElementById('cap-canvas');c.width=img.width;c.height=img.height;c.getContext('2d').drawImage(img,0,0);await processFrame(c,true)};img.src=ev.target.result};r.readAsDataURL(f);e.target.value=''}
+
+function goTab(v){curView=v;document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.view===v));document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x.id==='view-'+v));if(v==='scan'&&!camOn)startCam();if(v==='collection')renderColl();if(v==='stats')renderStats()}
+
+function renderColl(){
+  const s=document.getElementById('srch').value.toLowerCase();
+  let items=Object.values(db.plates).filter(p=>{const mf=curFilter==='all'||p.type===curFilter;const ms=!s||p.plate.toLowerCase().includes(s)||getRegion(p.plate).r.toLowerCase().includes(s);return mf&&ms}).sort((a,b)=>new Date(b.dates.at(-1))-new Date(a.dates.at(-1)));
+  document.getElementById('cl-cnt').textContent=items.length+' tablic';
+  const list=document.getElementById('pl-list');
+  if(!items.length){list.innerHTML='<div class="empty"><span>🔍</span>'+(s||curFilter!=='all'?'Brak wyników':'Kolekcja pusta — zacznij skanować!')+'</div>';return}
+  list.innerHTML=items.map(p=>{const{r}=getRegion(p.plate),ti=TYPES[p.type]||TYPES.standard;return '<div class="pi" onclick="showDM(''+p.plate+'')"><div class="ps ps-'+p.type+'"></div><div style="margin-left:6px"><div class="pn">'+p.plate+'</div><div style="font-size:11px;color:var(--tx3);margin-top:2px">'+ti.l+'</div></div><div style="flex:1"></div><div style="text-align:right"><div class="pr2">'+r+'</div><div class="pd">'+p.lastSeen+'</div></div><div class="pc '+(p.count>1?'multi':'')+'">'+p.count+'</div></div>'}).join('');
+}
+function setF(f){curFilter=f;document.querySelectorAll('.fc').forEach(c=>c.classList.toggle('active',c.dataset.f===f));renderColl()}
+
+function renderStats(){
+  const pl=Object.values(db.plates);
+  document.getElementById('s1').textContent=pl.length;document.getElementById('s2').textContent=db.scans||0;
+  document.getElementById('s3').textContent=new Set(pl.map(p=>getRegion(p.plate).r)).size;
+  const td=new Date().toLocaleDateString('pl-PL');document.getElementById('s4').textContent=pl.filter(p=>p.firstSeen.startsWith(td)).length;
+  const p2={},p3={};
+  pl.forEach(p=>{const c=p.plate.replace(/[\s\-.]/g,'');const x2=c.slice(0,2),x3=c.slice(0,3);if(/^[A-Z]{2}$/.test(x2))p2[x2]=(p2[x2]||0)+p.count;if(/^[A-Z]{3}$/.test(x3))p3[x3]=(p3[x3]||0)+p.count});
+  renderBars('b2',p2,10);renderBars('b3',p3,8);
+  const types={};pl.forEach(p=>{types[p.type]=(types[p.type]||0)+1});
+  document.getElementById('tg').innerHTML=Object.entries(TYPES).map(([k,v])=>'<div class="tc"><div class="td2" style="background:'+v.c+'"></div><div class="tn">'+v.l+'</div><div class="tv" style="color:'+v.c+'">'+(types[k]||0)+'</div></div>').join('');
+}
+function renderBars(id,data,n){
+  const s=Object.entries(data).sort((a,b)=>b[1]-a[1]).slice(0,n),mx=s[0]?.[1]||1,el=document.getElementById(id);
+  if(!s.length){el.innerHTML='<div style="font-size:12px;color:var(--tx3);padding:8px 4px">Brak danych</div>';return}
+  el.innerHTML=s.map(([p,c])=>'<div class="br2"><div class="bl2">'+p+'</div><div class="bt"><div class="bf" style="width:'+Math.round(c/mx*100)+'%"></div></div><div class="bc">'+c+'</div></div>').join('');
 }
 
-// INIT
-window.addEventListener('load', () => {
-  // Auto-start camera when on scan tab
-  if (currentView === 'scan') {
-    setTimeout(startCamera, 500);
-  }
-});
+function showDM(p){
+  const pl=db.plates[p];if(!pl)return;dmId=p;
+  const{r}=getRegion(p),ti=TYPES[pl.type]||TYPES.standard;
+  document.getElementById('dm-p').textContent=p;document.getElementById('dm-p').style.color=ti.c;
+  document.getElementById('dm-rows').innerHTML='<div class="dr"><span class="dk">Typ</span><span class="dv" style="color:'+ti.c+'">'+ti.l+'</span></div><div class="dr"><span class="dk">Region</span><span class="dv">'+r+'</span></div><div class="dr"><span class="dk">Pierwsza obserwacja</span><span class="dv">'+pl.firstSeen+'</span></div><div class="dr"><span class="dk">Ostatnia obserwacja</span><span class="dv">'+pl.lastSeen+'</span></div><div class="dr"><span class="dk">Obserwacji</span><span class="dv">'+pl.count+'x</span></div><div class="dr"><span class="dk">Zmień typ</span><span class="dv"><select onchange="changeType(''+p+'',this.value)" style="background:var(--sf3);color:var(--tx);border:0.5px solid var(--bd2);border-radius:6px;padding:4px 8px;font-size:13px">'+Object.entries(TYPES).map(([k,v])=>'<option value="'+k+'"'+(pl.type===k?' selected':'')+'>'+v.l+'</option>').join('')+'</select></span></div>';
+  document.getElementById('dm').classList.add('open');
+}
+function changeType(p,t){if(db.plates[p]){db.plates[p].type=t;save();renderColl()}}
+function closeDM(){document.getElementById('dm').classList.remove('open');dmId=null}
+function delPlate(){if(!dmId||!confirm('Usunąć '+dmId+'?'))return;delete db.plates[dmId];save();closeDM();renderColl();toast('Usunięto')}
 
-// Handle page visibility
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden && currentView === 'scan') {
-    // Keep camera running when switching apps briefly
-  }
-});
+function exportCSV(){
+  const pl=Object.values(db.plates).sort((a,b)=>b.count-a.count);
+  let csv='Tablica,Typ,Region,Obserwacji,Pierwsza obserwacja,Ostatnia obserwacja
+';
+  pl.forEach(p=>{const{r}=getRegion(p.plate),ti=TYPES[p.type]||TYPES.standard;csv+=p.plate+','+ti.l+','+r+','+p.count+','+p.firstSeen+','+p.lastSeen+'
+'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));a.download='tablice_'+new Date().toISOString().slice(0,10)+'.csv';a.click();toast('Eksport CSV gotowy');
+}
+
+let _tt;
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(_tt);_tt=setTimeout(()=>el.classList.remove('show'),3200)}
+
+window.addEventListener('load',()=>{resizeOV();initOCR();setTimeout(startCam,300)});
 </script>
 </body>
 </html>
